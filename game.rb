@@ -2,7 +2,7 @@
 
 # Game logic
 class Game
-  attr_accessor :board, :current_move
+  attr_accessor :board, :current_move, :status
 
   BOARD_WIDTH = 7
   BOARD_HEIGHT = 6
@@ -18,24 +18,72 @@ class Game
     @current_move % 2
   end
 
-  def valid_move?(column)
-    return false if column < 1
-    return false if column > BOARD_WIDTH - 1
-    return false unless @board[BOARD_HEIGHT - 1][column].nil?
+  def valid_move?(move)
+    return false unless move.to_i.to_s == move
+
+    move_in_memory = move.to_i - 1
+
+    return false if move_in_memory.negative?
+    return false if move_in_memory > BOARD_WIDTH - 1
+    return false unless @board[BOARD_HEIGHT - 1][move_in_memory].nil?
 
     true
   end
 
-  def make_move(column)
-    move_in_memory = column - 1
-    return nil unless valid_move? move_in_memory
+  def take_move
+    column = nil
+    while column.nil?
+      move = gets.chomp
+      unless valid_move? move
+        puts 'Move must be a digit from 1 to 7'
+        next
+      end
+      column = move.to_i - 1
+    end
+    column
+  end
 
-    row = 0
-    row += 1 unless @board[row][column].nil?
-
+  def make_move
+    column = take_move
+    row = row_in_column column
     @board[row][column] = current_player
 
-    [row, column]
+    @status = current_player.to_s.to_sym if winning_move?(row, column)
+
+    @current_move += 1
+
+    @status = :draw if draw_move?
+  end
+
+  def header
+    case status
+    when :playing then "Player #{current_player + 1}'s move"
+    when :'0' then 'Player 1 win'
+    when :'1' then 'Player 2 win'
+    when :draw then 'Draw'
+    end
+  end
+
+  def string_board
+    @board.reverse.reduce('') do |total, row|
+      total + (row.reduce('') do |total_row, cell|
+        case cell
+        when nil then "#{total_row}⚪"
+        when 0 then "#{total_row}🔴"
+        when 1 then "#{total_row}🟡"
+        end
+      end) + "\n"
+    end
+  end
+
+  def row_in_column(column)
+    row = 0
+    row += 1 until @board[row][column].nil?
+    row
+  end
+
+  def draw_move?
+    @current_move == BOARD_WIDTH * BOARD_HEIGHT
   end
 
   def winning_move?(row, column)
@@ -96,5 +144,19 @@ class Game
     end
 
     false
+  end
+
+  def print_screen
+    puts `clear`
+    puts header
+    puts string_board
+  end
+
+  def start
+    while @status == :playing
+      print_screen
+      make_move
+    end
+    print_screen
   end
 end
